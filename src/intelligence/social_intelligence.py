@@ -48,6 +48,7 @@ class SocialIntelligenceEngine:
     TWITTER_SEARCH_URL = "https://api.twitter.com/2/tweets/search/recent"
     REDDIT_TOKEN_URL = "https://www.reddit.com/api/v1/access_token"
     REDDIT_SEARCH_URL = "https://oauth.reddit.com/r/{subreddit}/search"
+    REDDIT_PUBLIC_SEARCH_URL = "https://www.reddit.com/r/{subreddit}/search.json"
     WHALE_ALERT_URL = "https://api.whale-alert.io/v1/transactions"
 
     def __init__(
@@ -158,18 +159,30 @@ class SocialIntelligenceEngine:
         return bool(self._reddit_token)
 
     async def fetch_reddit_sentiment(self, symbol: str) -> Dict:
-        if not await self._refresh_reddit_token():
-            return self._neutral("REDDIT", symbol)
-
+        await self._ensure_session()
         assert self._session is not None
-        headers = {"Authorization": f"bearer {self._reddit_token}", "User-Agent": "CRYPTZero-Apex/1.0"}
         query = f"{symbol} OR ${symbol}"
+
+        use_oauth = await self._refresh_reddit_token()
+        if use_oauth:
+            headers = {"Authorization": f"bearer {self._reddit_token}", "User-Agent": "CRYPTZero-Apex/1.0"}
+            url_template = self.REDDIT_SEARCH_URL
+        else:
+            headers = {"User-Agent": "CRYPTZero-Apex/1.0"}
+            url_template = self.REDDIT_PUBLIC_SEARCH_URL
 
         tasks = []
         for subreddit in self.subreddits:
             params = {"q": query, "restrict_sr": "on", "sort": "new", "limit": "25"}
-            url = self.REDDIT_SEARCH_URL.format(subreddit=subreddit)
-            tasks.append(self._session.get(url, params=params, headers=headers, timeout=aiohttp.ClientTimeout(total=6)))
+            url = url_template.format(subreddit=subreddit)
+            tasks.append(
+                self._session.get(
+                    url,
+                    params=params,
+                    headers=headers,
+                    timeout=aiohttp.ClientTimeout(total=6),
+                )
+            )
 
         sentiment_scores: List[float] = []
         total_posts = 0

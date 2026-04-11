@@ -458,6 +458,20 @@ class SignalGenerator:
         return normalized
 
     async def _emit(self, symbol: str, signal_type: str, direction: str, confidence: float, meta: dict):
+        if symbol not in self.orderbooks:
+            logger.debug("Dropping signal for unknown symbol: %s", symbol)
+            return
+        direction = str(direction).upper()
+        if direction not in {"BUY", "SELL"}:
+            logger.debug("Dropping signal with invalid direction: %s", direction)
+            return
+        try:
+            confidence = float(confidence)
+        except (TypeError, ValueError):
+            logger.debug("Dropping signal with invalid confidence: %s", confidence)
+            return
+        confidence = max(0.0, min(confidence, 100.0))
+
         key = (symbol, signal_type)
         now = time.time()
         if now - self._cooldowns.get(key, 0) < self.COOLDOWN:

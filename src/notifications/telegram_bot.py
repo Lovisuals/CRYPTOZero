@@ -96,6 +96,8 @@ class WeaponBot:
         self._auto_trade: bool = False
         self._last_signals: list = []
         self._app: Optional[Application] = None
+        self._send_queue: asyncio.Queue = asyncio.Queue(maxsize=5000)
+        self._sender_task: Optional[asyncio.Task] = None
 
     def build(self) -> Application:
         app = Application.builder().token(self._token).build()
@@ -115,7 +117,43 @@ class WeaponBot:
         self._last_signals.append(signal)
         if len(self._last_signals) > 50:
             self._last_signals = self._last_signals[-50:]
-        await self._app.bot.send_message(chat_id=self._chat_id, text=f'```\n{_fmt_signal(signal)}\n```', parse_mode='MarkdownV2')
+        if not self._app:
+            return
+        self._ensure_sender_task()
+        text = _fmt_signal(signal)
+        payload = {'chat_id': self._chat_id, 'text': text}
+        try:
+            self._send_queue.put_nowait(payload)
+        except asyncio.QueueFull:
+            _ = self._send_queue.get_nowait()
+            self._send_queue.task_done()
+            self._send_queue.put_nowait(payload)
+            logger.warning('Signal queue full; oldest Telegram message dropped')
+
+    def _ensure_sender_task(self):
+        if self._sender_task is None or self._sender_task.done():
+            self._sender_task = asyncio.create_task(self._sender_loop())
+
+    async def _sender_loop(self):
+        while True:
+            msg = await self._send_queue.get()
+            try:
+                await self._send_with_retry(msg)
+            finally:
+                self._send_queue.task_done()
+
+    async def _send_with_retry(self, payload: dict, retries: int = 3):
+        if not self._app:
+            return
+        for attempt in range(1, retries + 1):
+            try:
+                await self._app.bot.send_message(chat_id=payload['chat_id'], text=payload['text'])
+                return
+            except Exception as exc:
+                if attempt == retries:
+                    logger.error('Telegram send failed after retries: %s', exc)
+                    return
+                await asyncio.sleep(min(0.25 * (2 ** (attempt - 1)), 2.0))
 
     async def _cmd_start(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         logger.info(f"Incoming /start from {update.effective_user.id}")
@@ -137,7 +175,7 @@ class WeaponBot:
         for s in reversed(recent):
             ts = s.get('timestamp', 0) / 1000
             lines.append(f"{_fmt_time(ts)} | {s['symbol']} | {s['type']} | {s['direction']} | {s.get('confidence', 0)}%")
-        await update.message.reply_text(f'```\n{chr(10).join(lines)}\n```', parse_mode='MarkdownV2')
+        await update.message.reply_text(chr(10).join(lines))
 
     async def _cmd_orderbook(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         args = context.args
@@ -177,7 +215,7 @@ class WeaponBot:
         uptime = self._sg.uptime_seconds()
         stats = self._stream.stats()
         text = _fmt_health(h, uptime, stats)
-        await reply_fn(f'```\n{text}\n```', parse_mode='MarkdownV2')
+        await reply_fn(text)
 
     async def _send_orderbook(self, reply_fn, symbol: str):
         ob = self._sg.orderbooks.get(symbol)
@@ -188,7 +226,7 @@ class WeaponBot:
         spread = ob.get_spread_bps()
         mid = ob.get_mid_price()
         text = _fmt_orderbook(symbol, liq, spread, mid)
-        await reply_fn(f'```\n{text}\n```', parse_mode='MarkdownV2')
+        await reply_fn(text)
 
     async def _cmd_market(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         await self._send_market(update.message.reply_text)
@@ -207,7 +245,7 @@ class WeaponBot:
             await update.message.reply_text('Failed to fetch coin details.')
             return
         text = [f"COIN DETAILS: {coin['name']} ({coin['symbol']})", f'', f"Price: ${float(coin['price']):,.2f}", f"Market Cap: ${float(coin['marketCap']):,.0f}", f"24h Volume: ${float(coin['24hVolume']):,.0f}", f"Change: {coin['change']}%", f"Rank: {coin['rank']}"]
-        await update.message.reply_text(f'```\n{chr(10).join(text)}\n```', parse_mode='MarkdownV2')
+        await update.message.reply_text(chr(10).join(text))
 
     async def _send_market(self, reply_fn):
         if not self._coinranking:
@@ -218,4 +256,4 @@ class WeaponBot:
             await reply_fn('Failed to fetch global market stats.')
             return
         text = ['GLOBAL MARKET STATS', f'', f"Total Coins: {stats['totalCoins']:,}", f"Total Markets: {stats['totalMarkets']:,}", f"Total Market Cap: ${float(stats['totalMarketCap']):,.0f}", f"Total 24h Vol: ${float(stats['total24hVolume']):,.0f}", f"BTC Dominance: {stats['btcDominance']:.2f}%"]
-        await reply_fn(f'```\n{chr(10).join(text)}\n```', parse_mode='MarkdownV2')
+        await reply_fn(chr(10).join(text))
