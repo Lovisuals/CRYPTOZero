@@ -1,30 +1,24 @@
-"""
-Core module for WeaponBot
-"""
 from datetime import datetime, timezone
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import Application, CallbackQueryHandler, CommandHandler, ContextTypes
-from typing import Callable, List, Optional
-from typing import Optional
-from typing import Optional, Dict, Any
-import aiohttp
+from typing import Callable, List, Optional, Dict, Any
 import asyncio
-import hashlib
-import json
 import logging
 import os
 import time
-import websockets
 
 logger = logging.getLogger(__name__)
+
 def _fmt_time(ts_seconds: float) -> str:
     dt = datetime.fromtimestamp(ts_seconds, tz=timezone.utc)
     return dt.strftime('%Y-%m-%d %H:%M:%S UTC')
+
 def _fmt_uptime(seconds: float) -> str:
     h = int(seconds // 3600)
     m = int(seconds % 3600 // 60)
     s = int(seconds % 60)
     return f'{h}h {m}m {s}s'
+
 def _fmt_signal(sig: dict) -> str:
     lines = [f'SIGNAL DETECTED', f'', f"Symbol    : {sig['symbol']}", f"Type      : {sig['type']}", f"Direction : {sig['direction']}", f"Confidence: {sig.get('confidence', 0)}%", f'']
     if sig['type'] == 'IMBALANCE':
@@ -41,24 +35,23 @@ def _fmt_signal(sig: dict) -> str:
     ts = sig.get('timestamp', int(time.time() * 1000)) / 1000
     lines += ['', f'Issued    : {_fmt_time(ts)}']
     return '\n'.join(lines)
+
 def _fmt_health(health: dict, uptime: float, stream_stats: dict) -> str:
     lines = ['SYSTEM HEALTH', f'', f'Uptime    : {_fmt_uptime(uptime)}', f"Msg/recv  : {stream_stats.get('messages_received', 0):,}", f"Reconnects: {stream_stats.get('reconnect_count', 0)}", f'', 'Per-Symbol Status:']
     for symbol, h in health.items():
         sync_flag = 'OK' if h['synced'] else 'DESYNCED'
         lines += [f'', f'  {symbol}', f'    Sync      : {sync_flag}', f"    Gaps      : {h['gap_count']}", f"    Updates   : {h['update_count']:,}", f"    Bids/Asks : {h['bid_levels']} / {h['ask_levels']}", f"    Spread    : {h['spread_bps']} bps", f"    CVD       : {h['cvd']:+.4f}", f"    Icebergs  : {h['iceberg_active']} active"]
     return '\n'.join(lines)
+
 def _fmt_orderbook(symbol: str, liq: dict, spread_bps: int, mid: float) -> str:
     ratio = liq['imbalance_ratio']
     lines = [f'ORDER BOOK — {symbol}', f'', f'Mid Price : ${mid:,.2f}', f'Spread    : {spread_bps} bps', f'', f"Bid Liq (10L) : ${liq['bid_liquidity']:,.0f}", f"Ask Liq (10L) : ${liq['ask_liquidity']:,.0f}", f'Imbalance     : {ratio:.2f}:1', f'', 'Bias      : ' + ('BULLISH' if ratio > 1.5 else 'BEARISH' if ratio < 0.67 else 'NEUTRAL')]
     return '\n'.join(lines)
+
 def _main_keyboard() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup([[InlineKeyboardButton('Health', callback_data='health'), InlineKeyboardButton('Signals', callback_data='signals')], [InlineKeyboardButton('Book BTC', callback_data='ob_BTCUSDT'), InlineKeyboardButton('Market', callback_data='market')], [InlineKeyboardButton('Auto ON', callback_data='auto_on'), InlineKeyboardButton('Auto OFF', callback_data='auto_off')]])
-logger = logging.getLogger(__name__)
-logger = logging.getLogger(__name__)
-logger = logging.getLogger(__name__)
 
 class WeaponBot:
-
     def __init__(self, token: str, chat_id: int, signal_generator, stream_manager, allowed_symbols: list, coinranking=None, bitcoin_uuid: str=None):
         self._token = token
         self._chat_id = chat_id

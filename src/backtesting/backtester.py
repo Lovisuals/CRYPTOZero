@@ -13,19 +13,10 @@ from src.processing.volume_analyzer import VolumeAnalyzer
 from src.intelligence.absorption_detector import AbsorptionDetector
 from src.intelligence.liquidity_analyzer import LiquidityAnalyzer
 from src.intelligence.iceberg_detector import IcebergDetector
-from src.processing.volume_analyzer import VolumeAnalyzer
-from src.intelligence.absorption_detector import AbsorptionDetector
-from src.intelligence.liquidity_analyzer import LiquidityAnalyzer
-from src.processing.orderbook_engine import OrderBookEngine
-from src.processing.volume_analyzer import VolumeAnalyzer
-from src.intelligence.absorption_detector import AbsorptionDetector
-from src.intelligence.liquidity_analyzer import LiquidityAnalyzer
-from src.processing.orderbook_engine import OrderBookEngine
-from src.processing.volume_analyzer import VolumeAnalyzer
-from src.intelligence.absorption_detector import AbsorptionDetector
-from src.intelligence.liquidity_analyzer import LiquidityAnalyzer
 from src.strategy_rules import StrategyRules
+
 logger = logging.getLogger(__name__)
+
 _SHARPE_TAG = 'AUTORESEARCH_SHARPE='
 _WINRATE_TAG = 'AUTORESEARCH_WINRATE='
 _PF_TAG = 'AUTORESEARCH_PROFIT_FACTOR='
@@ -110,7 +101,6 @@ class BacktestResults:
         return float(raw * math.sqrt(3650))
 
 class Backtester:
-
     def __init__(self, data_path: str, symbol: str='BTCUSDT'):
         R = StrategyRules
         self.data_path = Path(data_path)
@@ -341,6 +331,7 @@ class Backtester:
         print(f'{_PF_TAG}{results.profit_factor:.6f}')
         print(f'{_SIGNALS_TAG}{results.total_signals}')
         print()
+
 if __name__ == '__main__':
     import sys
     logging.basicConfig(level=logging.INFO, format='%(asctime)s | %(levelname)-8s | %(name)s | %(message)s')

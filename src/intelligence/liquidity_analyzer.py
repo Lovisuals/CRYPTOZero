@@ -1,23 +1,10 @@
-"""
-Core module for LiquidityAnalyzer
-"""
-from collections import deque
 from sortedcontainers import SortedDict
-from typing import Callable, Dict, List, Optional
 from typing import Dict, List
-from typing import Dict, List, Optional
-import aiohttp
-import asyncio
 import logging
-import numpy as np
-import pandas as pd
-import time
 
-import logging
 logger = logging.getLogger(__name__)
 
 class LiquidityAnalyzer:
-
     def __init__(self, vacuum_threshold: float=0.1):
         self.vacuum_threshold = vacuum_threshold
         self.avg_bid_liquidity: float = 100000.0
@@ -105,4 +92,4 @@ class LiquidityAnalyzer:
             if qty > wall_multiplier * avg_ask and notional > min_notional:
                 walls.append({'type': 'ASK_WALL', 'price': price, 'quantity': qty, 'notional': notional, 'multiplier': qty / avg_ask})
         self.walls = walls
-        return walls
+        return walls

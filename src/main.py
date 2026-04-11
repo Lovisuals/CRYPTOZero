@@ -1,11 +1,7 @@
-"""
-Main entrypoint
-"""
 import asyncio
 import logging
 import os
 import signal
-import sys
 import yaml
 from dotenv import load_dotenv
 from src.blockchain.blockchain_logger import BlockchainLogger
@@ -45,21 +41,18 @@ async def main():
     bot = WeaponBot(token=token, chat_id=chat_id, signal_generator=sg, stream_manager=stream, allowed_symbols=symbols)
     app = bot.build()
     
-    # 1. Start Telegram Bot immediately so it is responsive to /status
     await app.initialize()
     await app.start()
     await app.updater.start_polling(drop_pending_updates=True)
     logger.info('Telegram interface online')
 
-    # 2. Start Data Sync in the background
     if os.getenv("REPLAY_MODE", "false").lower() == "true":
         logger.info("REPLAY MODE ENABLED - Starting historical simulation")
         simulator = HistoricalReplaySimulator(sg, bot)
-        asyncio.create_task(simulator.replay())
+        stream_task = asyncio.create_task(simulator.replay())
     else:
-        # Live initialization
-        asyncio.create_task(sg.initialize())
-        asyncio.create_task(stream.start())
+        init_task = asyncio.create_task(sg.initialize())
+        stream_task = asyncio.create_task(stream.start())
         logger.info('Live data synchronization started in background')
 
     logger.info('System online — monitoring %d symbols', len(symbols))
@@ -72,13 +65,22 @@ async def main():
     signal.signal(signal.SIGTERM, _shutdown)
     await stop.wait()
     logger.info('Shutting down...')
-    stream_task.cancel()
+
+    if 'stream_task' in locals():
+        stream_task.cancel()
+        try:
+            await stream_task
+        except asyncio.CancelledError:
+            pass
+
+    if executor:
+        await executor.close()
+
+    await sg.close()
+
     await app.updater.stop()
     await app.stop()
     await app.shutdown()
-    await sg.close()
-    if executor:
-        await executor.close()
     logger.info('Clean shutdown complete')
 if __name__ == '__main__':
     asyncio.run(main())

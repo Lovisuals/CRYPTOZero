@@ -1,23 +1,12 @@
-"""
-Core module for VolumeAnalyzer
-"""
 from collections import deque
-from sortedcontainers import SortedDict
-from typing import Callable, Dict, List, Optional
-from typing import Dict, List
-from typing import Dict, List, Optional
-import aiohttp
-import asyncio
+from typing import Dict
 import logging
 import numpy as np
 import pandas as pd
-import time
 
-import logging
 logger = logging.getLogger(__name__)
 
 class VolumeAnalyzer:
-
     def __init__(self, lookback: int=1000):
         self.lookback = lookback
         self.cvd: float = 0.0
@@ -120,4 +109,4 @@ class VolumeAnalyzer:
         recent = list(self.trade_history)[-periods:]
         buys = sum((t['qty'] for t in recent if t['side'] == 'BUY'))
         sells = sum((t['qty'] for t in recent if t['side'] == 'SELL'))
-        return buys / sells if sells > 0 else float('inf')
+        return buys / sells if sells > 0 else float('inf')

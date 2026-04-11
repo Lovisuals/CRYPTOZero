@@ -1,26 +1,12 @@
-"""
-Core module for CombinedStreamManager
-"""
-from datetime import datetime, timezone
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
-from telegram.ext import Application, CallbackQueryHandler, CommandHandler, ContextTypes
 from typing import Callable, List, Optional
-from typing import Optional
-from typing import Optional, Dict, Any
-import aiohttp
 import asyncio
-import hashlib
 import json
 import logging
-import os
-import time
 import websockets
 
-import logging
 logger = logging.getLogger(__name__)
 
 class CombinedStreamManager:
-
     def __init__(self, symbols: List[str], streams: List[str]=None, orderbook_callback: Optional[Callable]=None, trade_callback: Optional[Callable]=None):
         self.symbols = [s.upper() for s in symbols]
         self.streams = streams or ['depth@100ms', 'aggTrade']
@@ -34,7 +20,7 @@ class CombinedStreamManager:
 
     def _build_url(self) -> str:
         subs = [f'{symbol.lower()}@{stream}' for symbol in self.symbols for stream in self.streams]
-        return f"wss://stream1.binance.com:9443/stream?streams={'/'.join(subs)}"
+        return f"wss://stream.binance.com:9443/stream?streams={'/'.join(subs)}"
 
     async def start(self):
         self._running = True

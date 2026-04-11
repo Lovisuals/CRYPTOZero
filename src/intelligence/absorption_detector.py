@@ -1,23 +1,12 @@
-"""
-Core module for AbsorptionDetector
-"""
 from collections import deque
 from sortedcontainers import SortedDict
-from typing import Callable, Dict, List, Optional
-from typing import Dict, List
 from typing import Dict, List, Optional
-import aiohttp
-import asyncio
 import logging
-import numpy as np
-import pandas as pd
 import time
 
-import logging
 logger = logging.getLogger(__name__)
 
 class AbsorptionDetector:
-
     def __init__(self, volume_multiplier: int=50, persistence_periods: int=6, price_threshold: float=0.001):
         self.volume_multiplier = volume_multiplier
         self.persistence_periods = persistence_periods
@@ -63,4 +52,4 @@ class AbsorptionDetector:
     def _reset(self):
         self._in_absorption = False
         self._start_cvd = 0.0
-        self._start_time = 0.0
+        self._start_time = 0.0

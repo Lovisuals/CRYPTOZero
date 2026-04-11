@@ -1,23 +1,12 @@
-"""
-Core module for OrderBookEngine
-"""
-from collections import deque
 from sortedcontainers import SortedDict
-from typing import Callable, Dict, List, Optional
-from typing import Dict, List
-from typing import Dict, List, Optional
 import aiohttp
 import asyncio
 import logging
-import numpy as np
-import pandas as pd
 import time
 
-import logging
 logger = logging.getLogger(__name__)
 
 class OrderBookEngine:
-
     def __init__(self, symbol: str, depth: int=500):
         self.symbol = symbol.upper()
         self.depth = depth
@@ -38,7 +27,7 @@ class OrderBookEngine:
 
     async def fetch_snapshot(self) -> bool:
         await self.ensure_session()
-        url = 'https://api1.binance.com/api/v3/depth'
+        url = 'https://api.binance.com/api/v3/depth'
         params = {'symbol': self.symbol, 'limit': min(self.depth, 1000)}
         for attempt in range(3):
             try:
@@ -137,7 +126,7 @@ class OrderBookEngine:
     async def validate_against_rest(self):
         self.last_rest_check = time.time()
         await self.ensure_session()
-        url = 'https://api1.binance.com/api/v3/depth'
+        url = 'https://api.binance.com/api/v3/depth'
         params = {'symbol': self.symbol, 'limit': 10}
         try:
             timeout = aiohttp.ClientTimeout(total=3)

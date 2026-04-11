@@ -20,8 +20,8 @@ class TradeExecutor:
         else:
             logger.warning("TradeExecutor initialized → LIVE mode (HIGH RISK)")
 
-        self.max_risk_pct = 0.02  # 2% per trade
-        self._lock = asyncio.Lock()  # Prevent concurrent order execution
+        self.max_risk_pct = 0.02
+        self._lock = asyncio.Lock()
 
     async def get_usdt_balance(self) -> float:
         async with self._lock:
@@ -47,7 +47,6 @@ class TradeExecutor:
                     logger.warning("Insufficient USDT for safe execution")
                     return None
 
-                # Use price from signal payload (preferred keys)
                 price = (signal.get('mid_price') or 
                         signal.get('price') or 
                         signal.get('zone_start') or 
@@ -77,7 +76,6 @@ class TradeExecutor:
                 return None
 
     async def close(self):
-        """Clean shutdown"""
         try:
             await self.exchange.close()
         except Exception:

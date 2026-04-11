@@ -1,23 +1,12 @@
-"""
-Core module for IcebergDetector
-"""
 from collections import deque
 from sortedcontainers import SortedDict
-from typing import Callable, Dict, List, Optional
-from typing import Dict, List
 from typing import Dict, List, Optional
-import aiohttp
-import asyncio
 import logging
-import numpy as np
-import pandas as pd
 import time
 
-import logging
 logger = logging.getLogger(__name__)
 
 class IcebergDetector:
-
     class _Tracker:
         __slots__ = ('cum_vol', 'first_seen', 'last_seen', 'visible_qty', 'side', 'alive')
 
@@ -86,4 +75,4 @@ class IcebergDetector:
             signal, interpretation = ('SELL', 'Distribution zone — sell on rally to this level')
         else:
             signal, interpretation = ('BUY', 'Accumulation zone — buy on dip to this level')
-        return {'type': 'ICEBERG', 'side': t.side.upper(), 'price': price, 'visible_qty': t.visible_qty, 'cum_executed_vol': t.cum_vol, 'volume_ratio': ratio, 'duration_seconds': duration, 'signal': signal, 'interpretation': interpretation, 'confidence': 72, 'timestamp': int(time.time() * 1000)}
+        return {'type': 'ICEBERG', 'side': t.side.upper(), 'price': price, 'visible_qty': t.visible_qty, 'cum_executed_vol': t.cum_vol, 'volume_ratio': ratio, 'duration_seconds': duration, 'signal': signal, 'interpretation': interpretation, 'confidence': 72, 'timestamp': int(time.time() * 1000)}

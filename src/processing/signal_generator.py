@@ -1,7 +1,3 @@
-"""
-Signal generator orchestrates core detectors
-"""
-
 from src.data_ingestion.websocket_manager import CombinedStreamManager
 from src.intelligence.absorption_detector import AbsorptionDetector
 from src.intelligence.iceberg_detector import IcebergDetector
@@ -13,8 +9,8 @@ import pandas as pd
 import time
 import asyncio
 import os
-
 import logging
+
 logger = logging.getLogger(__name__)
 
 class SignalGenerator:

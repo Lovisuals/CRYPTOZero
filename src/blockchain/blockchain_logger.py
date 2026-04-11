@@ -1,22 +1,8 @@
-"""
-Core module for BlockchainLogger
-"""
-from datetime import datetime, timezone
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
-from telegram.ext import Application, CallbackQueryHandler, CommandHandler, ContextTypes
-from typing import Callable, List, Optional
 from typing import Optional
-from typing import Optional, Dict, Any
-import aiohttp
-import asyncio
 import hashlib
 import json
 import logging
-import os
-import time
-import websockets
 
-import logging
 logger = logging.getLogger(__name__)
 
 class BlockchainLogger:

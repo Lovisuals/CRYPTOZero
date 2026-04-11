@@ -10,21 +10,18 @@ class HistoricalReplaySimulator:
     def __init__(self, signal_gen, telegram_bot):
         self.signal_gen = signal_gen
         self.telegram_bot = telegram_bot
-        self.replay_speed = 5.0   # 5x real-time (adjust as needed)
+        self.replay_speed = 5.0
 
     async def replay(self, trades_csv: str = "data/historical/trades.csv",
                      depth_csv: str = "data/historical/depth_updates.csv"):
         logger.info("Starting historical replay simulation...")
 
-        # Load depth updates
         with open(depth_csv, newline='', encoding='utf-8') as f:
             depth_rows = list(csv.DictReader(f))
 
-        # Load trades
         with open(trades_csv, newline='', encoding='utf-8') as f:
             trade_rows = list(csv.DictReader(f))
 
-        # Combine and sort events by timestamp
         events = []
         for row in depth_rows:
             events.append({
@@ -59,7 +56,6 @@ class HistoricalReplaySimulator:
         start_data = events[0]['ts'] / 1000.0
 
         for event in events:
-            # Simulate timing
             data_time = event['ts'] / 1000.0
             delay = (data_time - start_data) / self.replay_speed
             target = start_real + delay
