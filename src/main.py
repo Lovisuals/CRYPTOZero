@@ -45,17 +45,24 @@ async def main():
     bot = WeaponBot(token=token, chat_id=chat_id, signal_generator=sg, stream_manager=stream, allowed_symbols=symbols)
     app = bot.build()
     
+    # 1. Start Telegram Bot immediately so it is responsive to /status
+    await app.initialize()
+    await app.start()
+    await app.updater.start_polling(drop_pending_updates=True)
+    logger.info('Telegram interface online')
+
+    # 2. Start Data Sync in the background
     if os.getenv("REPLAY_MODE", "false").lower() == "true":
         logger.info("REPLAY MODE ENABLED - Starting historical simulation")
         simulator = HistoricalReplaySimulator(sg, bot)
         asyncio.create_task(simulator.replay())
-        
-    await sg.initialize()
-    await app.initialize()
-    await app.start()
-    await app.updater.start_polling(drop_pending_updates=True)
-    logger.info('System online — streaming %d symbols', len(symbols))
-    stream_task = asyncio.create_task(stream.start())
+    else:
+        # Live initialization
+        asyncio.create_task(sg.initialize())
+        asyncio.create_task(stream.start())
+        logger.info('Live data synchronization started in background')
+
+    logger.info('System online — monitoring %d symbols', len(symbols))
     stop = asyncio.Event()
 
     def _shutdown(sig_num, frame):

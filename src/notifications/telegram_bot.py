@@ -92,9 +92,11 @@ class WeaponBot:
         await self._app.bot.send_message(chat_id=self._chat_id, text=f'```\n{_fmt_signal(signal)}\n```', parse_mode='MarkdownV2')
 
     async def _cmd_start(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        logger.info(f"Incoming /start from {update.effective_user.id}")
         await update.message.reply_text(text='OrderBook Weapon Machine v4.1\n\nReal-time order flow intelligence.\nUse the buttons below or type a command.', reply_markup=_main_keyboard())
 
     async def _cmd_status(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        logger.info(f"Incoming /status from {update.effective_user.id}")
         await self._send_health(update.message.reply_text)
 
     async def _cmd_health(self, update: Update, context: ContextTypes.DEFAULT_TYPE):

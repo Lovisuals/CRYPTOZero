@@ -38,7 +38,7 @@ class OrderBookEngine:
 
     async def fetch_snapshot(self) -> bool:
         await self.ensure_session()
-        url = 'https://api.binance.com/api/v3/depth'
+        url = 'https://api1.binance.com/api/v3/depth'
         params = {'symbol': self.symbol, 'limit': min(self.depth, 1000)}
         for attempt in range(3):
             try:
@@ -137,7 +137,7 @@ class OrderBookEngine:
     async def validate_against_rest(self):
         self.last_rest_check = time.time()
         await self.ensure_session()
-        url = 'https://api.binance.com/api/v3/depth'
+        url = 'https://api1.binance.com/api/v3/depth'
         params = {'symbol': self.symbol, 'limit': 10}
         try:
             timeout = aiohttp.ClientTimeout(total=3)

@@ -34,7 +34,7 @@ class CombinedStreamManager:
 
     def _build_url(self) -> str:
         subs = [f'{symbol.lower()}@{stream}' for symbol in self.symbols for stream in self.streams]
-        return f"wss://stream.binance.com:9443/stream?streams={'/'.join(subs)}"
+        return f"wss://stream1.binance.com:9443/stream?streams={'/'.join(subs)}"
 
     async def start(self):
         self._running = True
