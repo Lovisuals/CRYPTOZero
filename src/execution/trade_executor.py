@@ -25,12 +25,15 @@ class TradeExecutor:
 
     async def get_usdt_balance(self) -> float:
         async with self._lock:
-            try:
-                balance = await self.exchange.fetch_balance()
-                return float(balance.get('total', {}).get('USDT', 0.0))
-            except Exception as e:
-                logger.error(f"Balance fetch failed: {e}")
-                return 0.0
+            return await self._get_usdt_balance_unlocked()
+
+    async def _get_usdt_balance_unlocked(self) -> float:
+        try:
+            balance = await self.exchange.fetch_balance()
+            return float(balance.get('total', {}).get('USDT', 0.0))
+        except Exception as e:
+            logger.error(f"Balance fetch failed: {e}")
+            return 0.0
 
     async def execute_signal(self, signal: dict) -> dict | None:
         if signal.get('confidence', 0) < 70:
@@ -42,7 +45,7 @@ class TradeExecutor:
 
         async with self._lock:
             try:
-                balance_usdt = await self.get_usdt_balance()
+                balance_usdt = await self._get_usdt_balance_unlocked()
                 if balance_usdt < 15.0:
                     logger.warning("Insufficient USDT for safe execution")
                     return None

@@ -27,6 +27,20 @@ system:
   rest_validation_interval: 60
   drift_threshold: 0.0001
 
+apex:
+  enabled: true
+  poll_seconds: 30
+  min_confidence: 85
+  execution:
+    use_futures_executor: false
+
+external_apis:
+  coinglass_api_key: ""
+  twitter_bearer_token: ""
+  reddit_client_id: ""
+  reddit_client_secret: ""
+  whale_alert_api_key: ""
+
 telegram:
   alert_cooldown: 300
 

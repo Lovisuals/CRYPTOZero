@@ -32,6 +32,39 @@ def _fmt_signal(sig: dict) -> str:
         lines += [f"Zone      : ${sig.get('zone_start', 0):,.2f} — ${sig.get('zone_end', 0):,.2f}", f"Levels    : {sig.get('levels', 0)}", f"Speed     : {sig.get('speed', 'N/A')}", f"Distance  : {sig.get('distance_pct', 0):.3%}"]
     elif sig['type'] == 'ICEBERG':
         lines += [f"Price     : ${sig.get('price', 0):,.2f}", f"Vol Ratio : {sig.get('volume_ratio', 0):.1f}x", f"Persisted : {sig.get('duration_s', 0):.0f}s", f"Context   : {sig.get('interpretation', '')}"]
+    elif sig['type'] == 'LIQUIDATION':
+        lines += [
+            f"Cluster   : ${sig.get('cluster_price', 0):,.2f}",
+            f"Liq USD   : ${sig.get('liquidity_usd', 0):,.0f}",
+            f"Entry     : ${sig.get('entry_price', 0):,.2f}",
+            f"Stop/TP   : ${sig.get('stop_loss', 0):,.2f} / ${sig.get('take_profit', 0):,.2f}",
+            f"Source    : {sig.get('source', 'N/A')}",
+            f"Rationale : {sig.get('rationale', '')}",
+        ]
+    elif sig['type'] == 'TIME_DELIVERY':
+        lines += [
+            f"Confluence: {sig.get('signal', 'N/A')}",
+            f"Bull/Bear : {sig.get('bullish_count', 0)} / {sig.get('bearish_count', 0)}",
+        ]
+    elif sig['type'] == 'SOCIAL':
+        lines += [
+            f"Sentiment : {sig.get('sentiment_score', 0):+.2f}",
+            f"Buzz      : {sig.get('buzz_multiplier', 1.0):.2f}x",
+            f"Rationale : {sig.get('rationale', '')}",
+        ]
+    elif sig['type'] == 'APEX_FUSION':
+        support = sig.get('supporting_signals', [])
+        if isinstance(support, list):
+            support_text = ', '.join(support)
+        else:
+            support_text = str(support)
+        lines += [
+            f"Signals   : {sig.get('signal_count', 0)}",
+            f"Support   : {support_text}",
+            f"Kelly Size: {sig.get('position_multiplier', 0):.2%}",
+            f"Leverage  : {sig.get('leverage_recommended', 1)}x",
+            f"Rationale : {sig.get('rationale', '')}",
+        ]
     ts = sig.get('timestamp', int(time.time() * 1000)) / 1000
     lines += ['', f'Issued    : {_fmt_time(ts)}']
     return '\n'.join(lines)

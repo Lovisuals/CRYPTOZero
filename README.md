@@ -76,6 +76,18 @@ cryptzero/
 | VACUUM | Contiguous price levels with < 10% average liquidity | 86% |
 | ICEBERG | Executed volume > 5x visible size persisted for 30s minimum | 72% |
 
+### APEX Augmentation (Optional)
+
+When `apex.enabled: true`, CRYPTZero adds four extra intelligence modules:
+
+- `LIQUIDATION` - futures liquidation zone sweep/reversal detection (Binance + optional Coinglass)
+- `TIME_DELIVERY` - Wyckoff/fractal confluence across `1m/5m/15m/1h/4h/1d`
+- `SOCIAL` - Twitter/Reddit/whale sentiment fusion (API keys optional)
+- `APEX_FUSION` - weighted multi-signal fusion requiring 3+ aligned signals
+
+New executor option:
+- `apex.execution.use_futures_executor: true` enables leverage-aware `ApexTradeExecutor`
+
 **Realistic combined win rate: 62–65%** after fees (0.1%), slippage (0.05%), and Nigeria network latency (50–200ms).
 
 ---
