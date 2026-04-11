@@ -1,0 +1,39 @@
+exchanges:
+  binance:
+    ws_url: "wss://stream.binance.com:9443"
+    rest_url: "https://api.binance.com"
+    rate_limit: 1200
+
+trading_pairs:
+  - BTCUSDT
+  - ETHUSDT
+  - BNBUSDT
+
+signal_thresholds:
+  imbalance_ratio_buy: 3.0
+  imbalance_ratio_sell: 0.33
+  absorption_volume_multiplier: 50
+  vacuum_min_levels: 3
+  iceberg_volume_multiplier: 5.0
+  iceberg_persist_seconds: 30.0
+
+system:
+  orderbook_depth: 500
+  auto_trade_enabled: false
+  testnet_mode: true
+  trade_history_size: 10000
+  cvd_lookback_periods: 1000
+  signal_cooldown_seconds: 300
+  rest_validation_interval: 60
+  drift_threshold: 0.0001
+
+telegram:
+  alert_cooldown: 300
+
+blockchain:
+  enabled: false
+  min_confidence: 80
+
+coinranking:
+  enabled: true
+  bitcoin_uuid: "Qwsogvtv82FCd"

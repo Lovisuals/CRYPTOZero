@@ -1,0 +1,20 @@
+[Unit]
+Description=CRYPTZero OrderBook Weapon Machine v4.1
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=trader
+WorkingDirectory=/opt/cryptzero
+Environment="PYTHONPATH=/opt/cryptzero"
+EnvironmentFile=/opt/cryptzero/.env
+ExecStart=/opt/cryptzero/venv/bin/python src/main.py
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=cryptzero
+
+[Install]
+WantedBy=multi-user.target
