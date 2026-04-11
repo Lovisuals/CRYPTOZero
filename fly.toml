@@ -1,0 +1,13 @@
+app = "cryptzero-bot"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  REPLAY_MODE = "false"
+  TESTNET_MODE = "true"
+
+[[vm]]
+  cpu_kind = "shared"
+  cpus = 1
+  memory_mb = 512
