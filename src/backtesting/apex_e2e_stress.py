@@ -10,7 +10,6 @@ from typing import Dict, List
 from src.notifications.telegram_bot import WeaponBot
 from src.processing.signal_generator import SignalGenerator
 
-
 def _depth_update(seq: int, price: float, bullish: bool, ts_ms: int) -> dict:
     bid_base = 6.0 if bullish else 1.8
     ask_base = 1.8 if bullish else 6.0
@@ -18,10 +17,8 @@ def _depth_update(seq: int, price: float, bullish: bool, ts_ms: int) -> dict:
     asks = [[f"{price + i * 0.5:.2f}", f"{ask_base + i * 0.4:.5f}"] for i in range(1, 11)]
     return {"U": seq, "u": seq, "b": bids, "a": asks, "E": ts_ms}
 
-
 def _trade_update(price: float, qty: float, is_buyer_maker: bool, ts_ms: int) -> dict:
     return {"E": ts_ms, "p": f"{price:.2f}", "q": f"{qty:.6f}", "m": is_buyer_maker}
-
 
 def _validate_signal(sig: dict) -> List[str]:
     problems: List[str] = []
@@ -39,7 +36,6 @@ def _validate_signal(sig: dict) -> List[str]:
         problems.append("invalid_confidence_type")
     return problems
 
-
 class SignalProbe:
     def __init__(self):
         self.total = 0
@@ -54,7 +50,6 @@ class SignalProbe:
         self.latencies_ms.append(max(0.0, now_ms - float(sig.get("timestamp", now_ms))))
         self.validation_errors.extend(_validate_signal(sig))
 
-
 class _DummyTelegramClient:
     def __init__(self):
         self.sent = 0
@@ -62,7 +57,6 @@ class _DummyTelegramClient:
     async def send_message(self, chat_id: int, text: str):
         _ = (chat_id, text)
         self.sent += 1
-
 
 async def core_pipeline_stress(symbol: str, loops: int) -> Dict:
     probe = SignalProbe()
@@ -110,7 +104,6 @@ async def core_pipeline_stress(symbol: str, loops: int) -> Dict:
     }
     await sg.close()
     return summary
-
 
 async def apex_fusion_stress(symbol: str, iterations: int) -> Dict:
     probe = SignalProbe()
@@ -187,7 +180,6 @@ async def apex_fusion_stress(symbol: str, iterations: int) -> Dict:
     await sg.close()
     return summary
 
-
 async def telegram_queue_stress(samples: int) -> Dict:
     bot = WeaponBot(
         token="dummy",
@@ -232,7 +224,6 @@ async def telegram_queue_stress(samples: int) -> Dict:
         "throughput_msgs_per_sec": round(samples / max(elapsed, 1e-9), 2),
     }
 
-
 async def run_suite(core_loops: int, apex_iterations: int, telegram_samples: int):
     core = await core_pipeline_stress("BTCUSDT", core_loops)
     apex = await apex_fusion_stress("BTCUSDT", apex_iterations)
@@ -257,14 +248,12 @@ async def run_suite(core_loops: int, apex_iterations: int, telegram_samples: int
     print("TELEGRAM_SUMMARY=", tg)
     print("SMOKING_GUNS=", smoke_guns)
 
-
 def parse_args():
     parser = argparse.ArgumentParser(description="Massive end-to-end stress harness for CRYPTZero APEX.")
     parser.add_argument("--core-loops", type=int, default=40000)
     parser.add_argument("--apex-iterations", type=int, default=4000)
     parser.add_argument("--telegram-samples", type=int, default=3000)
     return parser.parse_args()
-
 
 if __name__ == "__main__":
     args = parse_args()

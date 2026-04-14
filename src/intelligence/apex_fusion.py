@@ -3,11 +3,7 @@ from __future__ import annotations
 import time
 from typing import Dict, List, Optional
 
-
 class ApexSignalFusion:
-    """
-    Composite confidence fusion across order-flow, liquidation, time, and social.
-    """
 
     def __init__(self):
         self.signal_weights = {

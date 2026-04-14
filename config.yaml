@@ -48,6 +48,21 @@ blockchain:
   enabled: false
   min_confidence: 80
 
+risk:
+  max_portfolio_drawdown_pct: 0.10
+  max_daily_loss_pct: 0.05
+  max_open_positions: 5
+  max_risk_per_trade_pct: 0.02
+  min_balance_usd: 50.0
+  max_consecutive_losses: 5
+  max_hourly_losses: 8
+  circuit_cooldown_seconds: 1800
+  trailing_stop_activation_pct: 0.01
+  trailing_stop_callback_pct: 0.005
+  max_holding_time_s: 3600
+  position_check_interval_s: 2.0
+  journal_path: "data/trade_journal.jsonl"
+
 coinranking:
   enabled: true
   bitcoin_uuid: "Qwsogvtv82FCd"

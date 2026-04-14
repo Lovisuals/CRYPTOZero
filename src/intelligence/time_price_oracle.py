@@ -11,11 +11,7 @@ import numpy as np
 
 logger = logging.getLogger(__name__)
 
-
 class TimePriceDeliveryOracle:
-    """
-    Multi-timeframe Wyckoff/fractal analyzer.
-    """
 
     BINANCE_KLINES_URL = "https://api.binance.com/api/v3/klines"
 

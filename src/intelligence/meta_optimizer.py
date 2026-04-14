@@ -9,11 +9,7 @@ import openai
 
 logger = logging.getLogger(__name__)
 
-
 class MetaCognitiveOptimizer:
-    """
-    Optional LLM-based strategy refinement.
-    """
 
     def __init__(self, openai_api_key: str, model: str = "gpt-4o-mini"):
         self.client = openai.AsyncOpenAI(api_key=openai_api_key)

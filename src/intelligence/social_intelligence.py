@@ -13,7 +13,6 @@ import numpy as np
 
 logger = logging.getLogger(__name__)
 
-
 POSITIVE_LEXICON = {
     "bullish",
     "breakout",
@@ -39,11 +38,7 @@ NEGATIVE_LEXICON = {
     "rejection",
 }
 
-
 class SocialIntelligenceEngine:
-    """
-    Multi-source social layer with graceful degradation.
-    """
 
     TWITTER_SEARCH_URL = "https://api.twitter.com/2/tweets/search/recent"
     REDDIT_TOKEN_URL = "https://www.reddit.com/api/v1/access_token"

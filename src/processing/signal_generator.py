@@ -13,13 +13,14 @@ from src.intelligence.apex_fusion import ApexSignalFusion
 from src.intelligence.iceberg_detector import IcebergDetector
 from src.intelligence.liquidation_analyzer import LiquidationHeatMapAnalyzer
 from src.intelligence.liquidity_analyzer import LiquidityAnalyzer
+from src.intelligence.regime_filter import RegimeFilter
 from src.intelligence.social_intelligence import SocialIntelligenceEngine
 from src.intelligence.time_price_oracle import TimePriceDeliveryOracle
+from src.intelligence.vpin_detector import VPINDetector
 from src.processing.orderbook_engine import OrderBookEngine
 from src.processing.volume_analyzer import VolumeAnalyzer
 
 logger = logging.getLogger(__name__)
-
 
 class SignalGenerator:
     COOLDOWN = 300
@@ -45,6 +46,10 @@ class SignalGenerator:
         reddit_client_id: Optional[str] = None,
         reddit_client_secret: Optional[str] = None,
         whale_alert_api_key: Optional[str] = None,
+        risk_engine=None,
+        trade_journal=None,
+        position_manager=None,
+        circuit_breaker=None,
     ):
         self.executor = executor
         self.auto_trade_enabled = auto_trade_enabled
@@ -73,6 +78,14 @@ class SignalGenerator:
             )
             for s in self.symbols
         }
+
+        self.regime_filters: Dict[str, RegimeFilter] = {s: RegimeFilter() for s in self.symbols}
+        self.vpin_detectors: Dict[str, VPINDetector] = {s: VPINDetector() for s in self.symbols}
+
+        self._risk_engine = risk_engine
+        self._trade_journal = trade_journal
+        self._position_manager = position_manager
+        self._circuit_breaker = circuit_breaker
 
         self._imbalance_buy = imbalance_buy
         self._imbalance_sell = imbalance_sell
@@ -244,6 +257,12 @@ class SignalGenerator:
         qty = float(data["q"])
         side = "SELL" if data.get("m") else "BUY"
         va.process_agg_trade(data)
+
+        self.regime_filters[symbol].update(price, qty, ob.get_spread_bps())
+        self.vpin_detectors[symbol].on_trade(qty, side == "BUY")
+
+        if self._position_manager:
+            self._position_manager.update_price(symbol, price)
 
         buf = self._trade_bufs[symbol]
         buf.append({"price": price, "qty": qty, "ts": data.get("E", 0)})
@@ -488,9 +507,23 @@ class SignalGenerator:
             "timestamp": int(now * 1000),
             **meta,
         }
+
+        regime = self.regime_filters.get(symbol)
+        if regime:
+            payload["regime"] = regime.regime
+            payload["regime_confidence"] = regime.confidence
+        vpin = self.vpin_detectors.get(symbol)
+        if vpin:
+            payload["vpin"] = vpin.vpin
+            payload["flow_toxic"] = vpin.is_toxic
+
         self._recent_signals[symbol][signal_type] = {**payload, "_stored_at": now}
 
-        logger.info("SIGNAL | %s | %s | %s | conf=%.1f%%", symbol, signal_type, direction, confidence)
+        logger.info("SIGNAL | %s | %s | %s | conf=%.1f%% | regime=%s | vpin=%.3f",
+                     symbol, signal_type, direction, confidence,
+                     regime.regime if regime else "N/A",
+                     vpin.vpin if vpin else 0.0)
+
         if self.on_signal:
             try:
                 await self.on_signal(payload)
@@ -498,14 +531,121 @@ class SignalGenerator:
                 logger.error("Signal callback error: %s", exc, exc_info=True)
 
         if getattr(self, "auto_trade_enabled", False) and self.executor:
+            await self._risk_gated_execute(payload)
+
+    async def _risk_gated_execute(self, signal: dict):
+        symbol = signal["symbol"]
+        signal_type = signal.get("signal_type", signal.get("type", ""))
+        confidence = float(signal.get("confidence", 0))
+
+        regime = self.regime_filters.get(symbol)
+        if regime and not regime.should_trade(signal_type):
+            logger.info("EXECUTION BLOCKED by regime filter: %s (%s)", symbol, regime.regime)
+            return
+
+        vpin = self.vpin_detectors.get(symbol)
+        if vpin and not vpin.should_allow_execution():
+            logger.info("EXECUTION BLOCKED by VPIN toxicity: %s (%.3f)", symbol, vpin.vpin)
+            return
+
+        if self._circuit_breaker and self._circuit_breaker.is_tripped:
+            logger.info("EXECUTION BLOCKED by circuit breaker: %s", self._circuit_breaker.trip_reason)
+            return
+
+        if not self._risk_engine or not self._trade_journal:
             if signal_type == "APEX_FUSION" and hasattr(self.executor, "execute_apex_signal"):
-                asyncio.create_task(self.executor.execute_apex_signal(payload))
+                asyncio.create_task(self.executor.execute_apex_signal(signal))
             elif (not self.apex_enabled) and confidence >= 70 and hasattr(self.executor, "execute_signal"):
-                asyncio.create_task(self.executor.execute_signal(payload))
+                asyncio.create_task(self.executor.execute_signal(signal))
+            return
+
+        balance = 0.0
+        if hasattr(self.executor, "get_usdt_balance"):
+            try:
+                balance = await self.executor.get_usdt_balance()
+            except Exception:
+                balance = 0.0
+
+        open_count = self._position_manager.open_positions_count() if self._position_manager else 0
+        cb_tripped = self._circuit_breaker.is_tripped if self._circuit_breaker else False
+
+        risk_check = self._risk_engine.check_risk(
+            signal=signal,
+            open_position_count=open_count,
+            balance_usd=balance,
+            circuit_breaker_tripped=cb_tripped,
+        )
+
+        if not risk_check["approved"]:
+            logger.info("EXECUTION REJECTED by risk engine: %s", risk_check["reason"])
+            return
+
+        ob = self.orderbooks.get(symbol)
+        entry_price = float(signal.get("mid_price") or signal.get("entry_price") or
+                           (ob.get_mid_price() if ob else 0))
+        if entry_price <= 0:
+            return
+
+        direction = signal.get("direction", "BUY")
+        stop_pct = 0.015
+        if direction == "BUY":
+            stop_loss = entry_price * (1 - stop_pct)
+            take_profit = entry_price * (1 + stop_pct * 2)
+        else:
+            stop_loss = entry_price * (1 + stop_pct)
+            take_profit = entry_price * (1 - stop_pct * 2)
+
+        regime_mult = regime.get_regime_multiplier() if regime else 1.0
+        vpin_mult = vpin.get_toxicity_multiplier() if vpin else 1.0
+        risk_pct = risk_check["position_size_pct"] * regime_mult * vpin_mult
+
+        if self._trade_journal:
+            rolling_wr = self._trade_journal.rolling_win_rate(50)
+            if rolling_wr < 0.45:
+                risk_pct *= 0.5
+                logger.info("Risk halved due to low rolling win rate: %.1f%%", rolling_wr * 100)
+
+        quantity = self._risk_engine.calculate_position_size(
+            balance_usd=balance,
+            risk_pct=risk_pct,
+            entry_price=entry_price,
+            stop_loss_price=stop_loss,
+        )
+
+        signal["stop_loss"] = stop_loss
+        signal["take_profit"] = take_profit
+
+        result = None
+        if signal_type == "APEX_FUSION" and hasattr(self.executor, "execute_apex_signal"):
+            result = await self.executor.execute_apex_signal(signal, quantity=quantity)
+        elif hasattr(self.executor, "execute_signal"):
+            result = await self.executor.execute_signal(signal, quantity=quantity)
+
+        if result and result.get("status") == "SUCCESS":
+            fill_price = float(result.get("entry_price", entry_price))
+            fill_qty = float(result.get("quantity", quantity))
+            leverage = int(result.get("leverage", 1))
+
+            trade = self._trade_journal.open_trade(
+                symbol=symbol,
+                signal_type=signal_type,
+                direction=direction,
+                confidence=confidence,
+                entry_price=fill_price,
+                quantity=fill_qty,
+                leverage=leverage,
+                stop_loss=stop_loss,
+                take_profit=take_profit,
+                order_id=result.get("order_id"),
+                metadata={"signal": signal, "risk_check": risk_check},
+            )
+            logger.info("TRADE JOURNALED | %s | %s %s @ %.2f | qty=%.6f | risk=%.2f%%",
+                        trade.trade_id, direction, symbol, fill_price, fill_qty, risk_pct * 100)
 
     def health(self) -> dict:
-        return {
-            s: {
+        result = {}
+        for s in self.symbols:
+            h = {
                 "synced": self.orderbooks[s]._synced,
                 "gap_count": self.orderbooks[s].gap_count,
                 "update_count": self.orderbooks[s].update_count,
@@ -514,9 +654,11 @@ class SignalGenerator:
                 "spread_bps": self.orderbooks[s].get_spread_bps(),
                 "cvd": self.volume_analyzers[s].cvd,
                 "iceberg_active": len(self.iceberg_detectors[s].confirmed),
+                "regime": self.regime_filters[s].regime,
+                "vpin": round(self.vpin_detectors[s].vpin, 4),
             }
-            for s in self.symbols
-        }
+            result[s] = h
+        return result
 
     def uptime_seconds(self) -> float:
         return time.time() - self.start_time

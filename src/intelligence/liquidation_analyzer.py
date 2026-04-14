@@ -11,13 +11,7 @@ import aiohttp
 
 logger = logging.getLogger(__name__)
 
-
 class LiquidationHeatMapAnalyzer:
-    """
-    Estimates liquidation cluster zones using a hybrid of:
-    - Binance futures mark/open-interest data
-    - Optional Coinglass liquidation heat map API
-    """
 
     BINANCE_PREMIUM_URL = "https://fapi.binance.com/fapi/v1/premiumIndex"
     BINANCE_OI_URL = "https://fapi.binance.com/fapi/v1/openInterest"
@@ -108,10 +102,6 @@ class LiquidationHeatMapAnalyzer:
             return None
 
     def _estimate_clusters(self, mark_data: Dict, current_price: float) -> List[Dict]:
-        """
-        Heuristic clusters when heat-map vendors are unavailable:
-        we project stop pools around nearby leverage sweep distances.
-        """
         open_interest_usd = mark_data["open_interest_usd"]
         funding_rate = mark_data["funding_rate"]
         if open_interest_usd <= 0 or current_price <= 0:
